@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 23:13:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/06/28 04:52:13 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/06/29 20:26:25 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -190,33 +190,34 @@ void    pipe_them(int in_file, int outfile, t_cmd *cmds, size_t n)
 
 int main(int argc, char **argv, char **envp)
 {
-    t_cmd cmds[10];
-    
-    // Build a simple pipeline of 10 commands with simple arguments
-    t_cmd *tmp1 = build_command("ls -l", envp);            // List files with details
-    t_cmd *tmp2 = build_command("sort -r", envp);          // Sort reverse alphabetically
-    t_cmd *tmp3 = build_command("uniq -c", envp);          // Remove duplicates and count
-    t_cmd *tmp4 = build_command("head -5", envp);          // Take first 5 lines
-    t_cmd *tmp5 = build_command("tail -3", envp);          // Take last 3 lines
-    t_cmd *tmp6 = build_command("sort -n", envp);          // Sort numerically
-    t_cmd *tmp7 = build_command("cat -n", envp);           // Add line numbers
-    t_cmd *tmp8 = build_command("head -2", envp);          // Take first 2 lines
-    t_cmd *tmp9 = build_command("rev", envp);              // Reverse each line
-    t_cmd *tmp10 = build_command("wc -l", envp);           // Count lines only
-    
-    cmds[0] = *tmp1;
-    cmds[1] = *tmp2;
-    cmds[2] = *tmp3;
-    cmds[3] = *tmp4;
-    cmds[4] = *tmp5;
-    cmds[5] = *tmp6;
-    cmds[6] = *tmp7;
-    cmds[7] = *tmp8;
-    cmds[8] = *tmp9;
-    cmds[9] = *tmp10;
-    
-    // Execute the pipeline: ls -l | sort -r | uniq -c | head -5 | tail -3 | sort -n | cat -n | head -2 | rev | wc -l
-    pipe_them(STDIN_FILENO, STDOUT_FILENO, cmds, 10);
-    
+    int i;
+    int in_file;
+    int out_file;
+    t_cmd *cmds;
+    t_cmd *cmd;
+
+    if (argc < 5)
+        return (1);
+    i = 0;
+
+    in_file = open(argv[1], O_RDONLY);
+    out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    cmds = ft_calloc(argc - 3, sizeof(t_cmd));
+    while (i < argc - 3)
+    {
+        cmd = build_command(argv[i + 2], envp);
+        if (!cmd)
+        {
+            while(i--)
+                free(&cmds[i]);
+            return (1);
+        }
+        cmds[i] = *cmd;
+        free(cmd);
+        i++;
+    }
+    pipe_them(in_file, out_file, cmds, argc - 3);
+    close(in_file);
+    close(out_file);
     return (0);
 }
