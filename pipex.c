@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42port.com>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 23:13:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/06/30 19:39:20 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/06/30 19:53:47 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,6 @@ typedef struct s_cmd
 {
     char    *path;
     char    **args;
-    char    **envp;
     int     fd[2];
     int     pid;
 }   t_cmd;
@@ -116,7 +115,7 @@ t_cmd   *build_command(char *cmd_str, char **envp)
     t_cmd *ret;
 
     wc = count_words(cmd_str, ' ');
-    cmd_str_split = ft_split(cmd_str, ' ');
+    cmd_str_split = ft_split(cmd_str, ' '); //needs malloc check
     ret = calloc(1, sizeof(t_cmd));
     if (!ret)
         return (NULL);
@@ -127,14 +126,12 @@ t_cmd   *build_command(char *cmd_str, char **envp)
     i = -1;
     if (wc > 0)
     {
-        ret->args = malloc((wc + 1) * sizeof(char *));
+        ret->args = malloc((wc + 1) * sizeof(char *)); //needs malloc check
         while (++i < wc)
-            ret->args[i] = ft_strdup(cmd_str_split[i]);
+            ret->args[i] = ft_strdup(cmd_str_split[i]); //needs malloc check
         ret->args[i] = NULL;    
     }
-    ret->envp = envp;
-    free(cmd_str_split);
-    return (ret);
+    return (free(cmd_str_split), ret);
 }
 
 void close_fds(t_pipex *pipex)
@@ -145,8 +142,7 @@ void close_fds(t_pipex *pipex)
     while (i < pipex->cmd_count - 1)
     {
         close(pipex->cmds[i].fd[READ_END]);
-        close(pipex->cmds[i].fd[WRITE_END]);
-        i++;
+        close(pipex->cmds[i++].fd[WRITE_END]);
     }
 }
 
@@ -156,10 +152,7 @@ void    open_pipes(t_pipex *pipex)
 
     i = 0;
     while (i < pipex->cmd_count)
-    {
-        pipe(pipex->cmds[i].fd);
-        i++;
-    }
+        pipe(pipex->cmds[i++].fd);
 }
 
 void    wait_pids(t_pipex *pipex)
@@ -168,13 +161,10 @@ void    wait_pids(t_pipex *pipex)
     
     i = 0;
     while (i < pipex->cmd_count)
-    {
-        waitpid(pipex->cmds[i].pid, NULL, 0);
-        i++;
-    }
+        waitpid(pipex->cmds[i++].pid, NULL, 0);
 }
 
-void    connect_pipe(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
+void    connect(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
 {
     if (first)
         dup2(pipex->in_file, STDIN_FILENO);
@@ -185,7 +175,17 @@ void    connect_pipe(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
     else
         dup2(cmd->fd[WRITE_END], STDOUT_FILENO);
 }
-void    pipe_them(t_pipex *pipex)
+
+void    exec(t_pipex *pipex, t_cmd *cmd, size_t index)
+{
+    connect(pipex, cmd, (index == 0), (index == (pipex->cmd_count - 1)));
+    close_fds(pipex);
+    execve(pipex->cmds[index].path, 
+            pipex->cmds[index].args, 
+            pipex->envp);
+    exit(1);
+}
+void    pipe_exec_them(t_pipex *pipex)
 {
     size_t  i;
     t_cmd   *cmd;
@@ -197,14 +197,7 @@ void    pipe_them(t_pipex *pipex)
         cmd = &pipex->cmds[i];
         cmd->pid = fork();
         if (pipex->cmds[i].pid == 0)
-        {
-            connect_pipe(pipex, cmd, i == 0, i == (pipex->cmd_count - 1));
-            close_fds(pipex);
-            execve(pipex->cmds[i].path, 
-                pipex->cmds[i].args, 
-                pipex->cmds[i].envp);
-            exit(1);
-        }
+            exec(pipex, cmd, i);
         i++;
     }
     close_fds(pipex);
@@ -234,7 +227,7 @@ int    parse_cmds(t_pipex *pipex)
 }
 int main(int argc, char **argv, char **envp)
 {
-    int i;
+    int     i;
     t_pipex pipex;
     ft_memset(&pipex, 0, sizeof(pipex));
     if (argc < 5)
@@ -247,7 +240,7 @@ int main(int argc, char **argv, char **envp)
     pipex.argv = argv;
     pipex.envp = envp;
     parse_cmds(&pipex);
-    pipe_them(&pipex);
+    pipe_exec_them(&pipex);
     close(pipex.in_file);
     close(pipex.out_file);
     return (0);
