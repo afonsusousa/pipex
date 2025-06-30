@@ -6,12 +6,14 @@
 /*   By: amagno-r <amagno-r@student.42port.com>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 23:13:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/06/30 19:53:47 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/06/30 20:57:26 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -39,6 +41,32 @@ typedef struct s_pipex
     t_cmd   *cmds;
     size_t  cmd_count;
 } t_pipex;
+
+void    free_cmds(t_pipex *pipex)
+{
+    size_t  i;
+
+    i = 0;
+    while (i < pipex->cmd_count)
+    {
+        while (pipex->cmds[i].args && *pipex->cmds[i].args)
+            free(*pipex->cmds[i].args);
+        if (pipex->cmds[i].args)
+            free(pipex->cmds[i].args);
+        if (pipex->cmds->path)
+            free(pipex->cmds[i].path);
+    }
+    free(pipex->cmds);
+}
+void    error_exit(t_pipex *pipex, const char *errorstr)
+{
+    free_cmds(pipex);
+    if (!errorstr)
+        perror(strerror(errno));
+    else
+        perror(errorstr);
+    exit(errno);
+}
 
 int count_words(char *str, char sep)
 {
@@ -107,15 +135,37 @@ char *find_path(char *cmd, char **envp)
     return (free(split_path), NULL);
 }
 
-t_cmd   *build_command(char *cmd_str, char **envp)
+char    **populate_args(t_pipex *pipex, t_cmd *cmd, char **args, size_t wc)
+{
+    size_t i;
+
+    i = 0;
+    if (wc > 0)
+    {
+        cmd->args = malloc((wc + 1) * sizeof(char *));
+        if (!cmd->args)
+           return (NULL);
+        while (i < wc)
+        {
+            cmd->args[i] = ft_strdup(args[i]);
+            if(!cmd->args[i])
+               return (NULL);
+            i++;
+        }
+        cmd->args[i] = NULL;
+    }
+    return (cmd->args);
+}
+t_cmd   *build_command(t_pipex *pipex, char *cmd_str, char **envp)
 {
     int wc;
-    int i;
     char **cmd_str_split;
     t_cmd *ret;
 
     wc = count_words(cmd_str, ' ');
-    cmd_str_split = ft_split(cmd_str, ' '); //needs malloc check
+    cmd_str_split = ft_split(cmd_str, ' ');
+    if (!cmd_str_split)
+        return (NULL);
     ret = calloc(1, sizeof(t_cmd));
     if (!ret)
         return (NULL);
@@ -123,14 +173,8 @@ t_cmd   *build_command(char *cmd_str, char **envp)
         ret->path = find_path(cmd_str_split[0], envp);
     if (!ret->path)
         return (free(ret), free(cmd_str_split), NULL);
-    i = -1;
-    if (wc > 0)
-    {
-        ret->args = malloc((wc + 1) * sizeof(char *)); //needs malloc check
-        while (++i < wc)
-            ret->args[i] = ft_strdup(cmd_str_split[i]); //needs malloc check
-        ret->args[i] = NULL;    
-    }
+    if (!populate_args(pipex, ret, cmd_str_split, wc))
+        return (free(ret), free(cmd_str_split), NULL);
     return (free(cmd_str_split), ret);
 }
 
@@ -141,8 +185,10 @@ void close_fds(t_pipex *pipex)
     i = 0;
     while (i < pipex->cmd_count - 1)
     {
-        close(pipex->cmds[i].fd[READ_END]);
-        close(pipex->cmds[i++].fd[WRITE_END]);
+        if (close(pipex->cmds[i].fd[READ_END]) == -1)
+            error_exit(pipex, NULL);
+        if (close(pipex->cmds[i++].fd[WRITE_END]) == -1)
+            error_exit(pipex, NULL);
     }
 }
 
@@ -152,7 +198,8 @@ void    open_pipes(t_pipex *pipex)
 
     i = 0;
     while (i < pipex->cmd_count)
-        pipe(pipex->cmds[i++].fd);
+        if(pipe(pipex->cmds[i++].fd) == -1)
+            error_exit(pipex, NULL);
 }
 
 void    wait_pids(t_pipex *pipex)
@@ -161,28 +208,40 @@ void    wait_pids(t_pipex *pipex)
     
     i = 0;
     while (i < pipex->cmd_count)
-        waitpid(pipex->cmds[i++].pid, NULL, 0);
+        if(waitpid(pipex->cmds[i++].pid, NULL, 0) == -1)
+            error_exit(pipex, NULL);
 }
 
 void    connect(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
 {
     if (first)
-        dup2(pipex->in_file, STDIN_FILENO);
+    {
+        if (dup2(pipex->in_file, STDIN_FILENO) == -1)
+            error_exit(pipex, NULL);
+    }
     else
-        dup2((cmd - 1)->fd[READ_END], STDIN_FILENO);
+    {
+        if (dup2((cmd - 1)->fd[READ_END], STDIN_FILENO) == -1)
+            error_exit(pipex, NULL);
+    }
     if (last)
-        dup2(pipex->out_file, STDOUT_FILENO);
+    {
+        if (dup2(pipex->out_file, STDOUT_FILENO) == -1)
+            error_exit(pipex, NULL);
+    }
     else
-        dup2(cmd->fd[WRITE_END], STDOUT_FILENO);
+    {
+        if (dup2(cmd->fd[WRITE_END], STDOUT_FILENO) == -1)
+            error_exit(pipex, NULL);
+    }
 }
 
 void    exec(t_pipex *pipex, t_cmd *cmd, size_t index)
 {
     connect(pipex, cmd, (index == 0), (index == (pipex->cmd_count - 1)));
     close_fds(pipex);
-    execve(pipex->cmds[index].path, 
-            pipex->cmds[index].args, 
-            pipex->envp);
+    if (execve(cmd->path, cmd->args, pipex->envp) == -1)
+        error_exit(pipex, NULL);
     exit(1);
 }
 void    pipe_exec_them(t_pipex *pipex)
@@ -196,6 +255,8 @@ void    pipe_exec_them(t_pipex *pipex)
     {
         cmd = &pipex->cmds[i];
         cmd->pid = fork();
+        if(cmd->pid == -1)
+            error_exit(pipex, NULL);
         if (pipex->cmds[i].pid == 0)
             exec(pipex, cmd, i);
         i++;
@@ -212,13 +273,9 @@ int    parse_cmds(t_pipex *pipex)
     i = 0;
     while (i < pipex->cmd_count)
     {
-        cmd = build_command(pipex->argv[i + 2], pipex->envp);
+        cmd = build_command(pipex, pipex->argv[i + 2], pipex->envp);
         if (!cmd)
-        {
-            while(i--)
-                free(&pipex->cmds[i]);
-            return (0);
-        }
+            error_exit(pipex, "Command parsing failure!");
         pipex->cmds[i] = *cmd;
         free(cmd);
         i++;
