@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   pipex.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
+/*   By: amagno-r <amagno-r@student.42port.com>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 23:13:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/06/29 20:26:25 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/06/30 19:39:20 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,17 @@ typedef struct s_cmd
     int     fd[2];
     int     pid;
 }   t_cmd;
+
+typedef struct s_pipex
+{
+    int     in_file;
+    int     out_file;
+    bool    here_doc;
+    char    **argv;
+    char    **envp;
+    t_cmd   *cmds;
+    size_t  cmd_count;
+} t_pipex;
 
 int count_words(char *str, char sep)
 {
@@ -60,6 +71,8 @@ char    *strjoin_three(char *s1, char *s2, char *s3)
     ret = malloc(ft_strlen(s1) + ft_strlen(s2) + ft_strlen(s3) + 1);
     if (!ret)
         return (NULL);
+    if (!s1 || !s2 || !s3)
+        return (NULL);
     while (*s1)
         ret[i++] = *s1++;
     while (*s2)
@@ -88,12 +101,13 @@ char *find_path(char *cmd, char **envp)
         try = strjoin_three(*split_path++, "/", cmd);
         if (!try)
             return (free(split_path), NULL);
-        if (!access(try, X_OK))
+        if (access(try, X_OK) == 0)
             return (try);
         free(try);
     }
     return (free(split_path), NULL);
 }
+
 t_cmd   *build_command(char *cmd_str, char **envp)
 {
     int wc;
@@ -123,101 +137,118 @@ t_cmd   *build_command(char *cmd_str, char **envp)
     return (ret);
 }
 
-void close_fds(t_cmd *cmds, size_t n)
+void close_fds(t_pipex *pipex)
 {
     size_t  i;
     
     i = 0;
-    while (i < n - 1)
+    while (i < pipex->cmd_count - 1)
     {
-        close(cmds[i].fd[READ_END]);
-        close(cmds[i].fd[WRITE_END]);
+        close(pipex->cmds[i].fd[READ_END]);
+        close(pipex->cmds[i].fd[WRITE_END]);
         i++;
     }
 }
 
-void    open_pipes(t_cmd *cmds, size_t n)
+void    open_pipes(t_pipex *pipex)
 {
     size_t  i;
 
     i = 0;
-    while (i < n - 1)
+    while (i < pipex->cmd_count)
     {
-        pipe(cmds[i].fd);
+        pipe(pipex->cmds[i].fd);
         i++;
     }
 }
 
-void    wait_pids(t_cmd *cmds, size_t n)
+void    wait_pids(t_pipex *pipex)
 {
     size_t  i;
     
     i = 0;
-    while (i < n)
+    while (i < pipex->cmd_count)
     {
-        waitpid(cmds[i].pid, NULL, 0);
+        waitpid(pipex->cmds[i].pid, NULL, 0);
         i++;
     }
 }
-void    pipe_them(int in_file, int outfile, t_cmd *cmds, size_t n)
+
+void    connect_pipe(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
 {
-    size_t i = 0;
+    if (first)
+        dup2(pipex->in_file, STDIN_FILENO);
+    else
+        dup2((cmd - 1)->fd[READ_END], STDIN_FILENO);
+    if (last)
+        dup2(pipex->out_file, STDOUT_FILENO);
+    else
+        dup2(cmd->fd[WRITE_END], STDOUT_FILENO);
+}
+void    pipe_them(t_pipex *pipex)
+{
+    size_t  i;
+    t_cmd   *cmd;
     
     i = 0;
-    open_pipes(cmds, n);
-    while (i < n)
+    open_pipes(pipex);
+    while (i < pipex->cmd_count)
     {
-        cmds[i].pid = fork();
-        if (cmds[i].pid == 0)
+        cmd = &pipex->cmds[i];
+        cmd->pid = fork();
+        if (pipex->cmds[i].pid == 0)
         {
-            if (i == 0)
-                dup2(in_file, STDIN_FILENO);
-            else
-                dup2(cmds[i-1].fd[READ_END], STDIN_FILENO);
-            if (i == n - 1)
-                dup2(outfile, STDOUT_FILENO);
-            else
-                dup2(cmds[i].fd[WRITE_END], STDOUT_FILENO);
-            close_fds(cmds, n);
-            execve(cmds[i].path, cmds[i].args, cmds[i].envp);
+            connect_pipe(pipex, cmd, i == 0, i == (pipex->cmd_count - 1));
+            close_fds(pipex);
+            execve(pipex->cmds[i].path, 
+                pipex->cmds[i].args, 
+                pipex->cmds[i].envp);
             exit(1);
         }
         i++;
     }
-    close_fds(cmds, n);
-    wait_pids(cmds, n);
+    close_fds(pipex);
+    wait_pids(pipex);
 }
 
-int main(int argc, char **argv, char **envp)
+int    parse_cmds(t_pipex *pipex)
 {
-    int i;
-    int in_file;
-    int out_file;
-    t_cmd *cmds;
-    t_cmd *cmd;
-
-    if (argc < 5)
-        return (1);
+    int     i;
+    t_cmd   *cmd;
+    
     i = 0;
-
-    in_file = open(argv[1], O_RDONLY);
-    out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    cmds = ft_calloc(argc - 3, sizeof(t_cmd));
-    while (i < argc - 3)
+    while (i < pipex->cmd_count)
     {
-        cmd = build_command(argv[i + 2], envp);
+        cmd = build_command(pipex->argv[i + 2], pipex->envp);
         if (!cmd)
         {
             while(i--)
-                free(&cmds[i]);
-            return (1);
+                free(&pipex->cmds[i]);
+            return (0);
         }
-        cmds[i] = *cmd;
+        pipex->cmds[i] = *cmd;
         free(cmd);
         i++;
     }
-    pipe_them(in_file, out_file, cmds, argc - 3);
-    close(in_file);
-    close(out_file);
+    return (1);
+}
+int main(int argc, char **argv, char **envp)
+{
+    int i;
+    t_pipex pipex;
+    ft_memset(&pipex, 0, sizeof(pipex));
+    if (argc < 5)
+        return (1);
+    i = 0;
+    pipex.in_file = open(argv[1], O_RDONLY);
+    pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    pipex.cmd_count = argc - 3;
+    pipex.cmds = ft_calloc(pipex.cmd_count, sizeof(t_cmd));
+    pipex.argv = argv;
+    pipex.envp = envp;
+    parse_cmds(&pipex);
+    pipe_them(&pipex);
+    close(pipex.in_file);
+    close(pipex.out_file);
     return (0);
 }
