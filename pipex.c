@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   pipex.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: amagno-r <amagno-r@student.42port.com>     +#+  +:+       +#+        */
+/*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 23:13:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/06/30 20:57:26 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/01 04:33:06 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,19 @@ typedef struct s_pipex
     size_t  cmd_count;
 } t_pipex;
 
+void    free_until_null(char ***str_v)
+{
+    size_t  i;
+
+    i = 0;
+    if (!*str_v)
+        return ;
+    while ((*str_v)[i])
+        free((*str_v)[i++]);
+    free(*str_v);
+    *str_v = NULL;
+}
+
 void    free_cmds(t_pipex *pipex)
 {
     size_t  i;
@@ -49,15 +62,14 @@ void    free_cmds(t_pipex *pipex)
     i = 0;
     while (i < pipex->cmd_count)
     {
-        while (pipex->cmds[i].args && *pipex->cmds[i].args)
-            free(*pipex->cmds[i].args);
-        if (pipex->cmds[i].args)
-            free(pipex->cmds[i].args);
-        if (pipex->cmds->path)
+        free_until_null(&pipex->cmds[i].args);
+        if (pipex->cmds[i].path)
             free(pipex->cmds[i].path);
+        i++;
     }
     free(pipex->cmds);
 }
+
 void    error_exit(t_pipex *pipex, const char *errorstr)
 {
     free_cmds(pipex);
@@ -65,7 +77,9 @@ void    error_exit(t_pipex *pipex, const char *errorstr)
         perror(strerror(errno));
     else
         perror(errorstr);
-    exit(errno);
+    close(pipex->in_file);
+    close(pipex->out_file);
+    exit(EXIT_FAILURE);
 }
 
 int count_words(char *str, char sep)
@@ -112,8 +126,11 @@ char    *strjoin_three(char *s1, char *s2, char *s3)
 
 char *find_path(char *cmd, char **envp)
 {
+    size_t     i;
     char **split_path;
     char *try;
+
+    i = 0;
     while (*envp)
     {
         if (!ft_strncmp("PATH=", *envp, 5))
@@ -123,16 +140,18 @@ char *find_path(char *cmd, char **envp)
     if (!*envp)
         return (NULL);
     split_path = ft_split(*envp + 5, ':');
-    while (*split_path)
+    if(!split_path)
+        return (NULL);
+    while (split_path[i])
     {
-        try = strjoin_three(*split_path++, "/", cmd);
+        try = strjoin_three(split_path[i++], "/", cmd);
         if (!try)
-            return (free(split_path), NULL);
+            return (free_until_null(&split_path), NULL);
         if (access(try, X_OK) == 0)
-            return (try);
+            return (free_until_null(&split_path), try);
         free(try);
     }
-    return (free(split_path), NULL);
+    return (free_until_null(&split_path), NULL);
 }
 
 char    **populate_args(t_pipex *pipex, t_cmd *cmd, char **args, size_t wc)
@@ -172,10 +191,10 @@ t_cmd   *build_command(t_pipex *pipex, char *cmd_str, char **envp)
     if (wc)
         ret->path = find_path(cmd_str_split[0], envp);
     if (!ret->path)
-        return (free(ret), free(cmd_str_split), NULL);
+        return (free(ret), free_until_null(&cmd_str_split), NULL);
     if (!populate_args(pipex, ret, cmd_str_split, wc))
-        return (free(ret), free(cmd_str_split), NULL);
-    return (free(cmd_str_split), ret);
+        return (free(ret), free_until_null(&cmd_str_split), NULL);
+    return (free_until_null(&cmd_str_split), ret);
 }
 
 void close_fds(t_pipex *pipex)
@@ -275,7 +294,7 @@ int    parse_cmds(t_pipex *pipex)
     {
         cmd = build_command(pipex, pipex->argv[i + 2], pipex->envp);
         if (!cmd)
-            error_exit(pipex, "Command parsing failure!");
+            error_exit(pipex, "Command parsing failure");
         pipex->cmds[i] = *cmd;
         free(cmd);
         i++;
@@ -298,6 +317,7 @@ int main(int argc, char **argv, char **envp)
     pipex.envp = envp;
     parse_cmds(&pipex);
     pipe_exec_them(&pipex);
+    free_cmds(&pipex);
     close(pipex.in_file);
     close(pipex.out_file);
     return (0);
