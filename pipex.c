@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 23:13:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/01 04:33:06 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/02 03:54:27 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,11 +18,13 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdbool.h>
-#include "../libft/libft.h" 
+#include "libft/libft.h" 
+
 
 # define READ_END 0
 # define WRITE_END 1
 
+char    *get_next_line(int fd);
 typedef struct s_cmd
 {
     char    *path;
@@ -35,6 +37,7 @@ typedef struct s_pipex
 {
     int     in_file;
     int     out_file;
+    int     here_doc_file;
     bool    here_doc;
     char    **argv;
     char    **envp;
@@ -77,8 +80,10 @@ void    error_exit(t_pipex *pipex, const char *errorstr)
         perror(strerror(errno));
     else
         perror(errorstr);
-    close(pipex->in_file);
-    close(pipex->out_file);
+    if (pipex->in_file != -1)
+        close(pipex->in_file);
+    if (pipex->out_file != -1)
+        close(pipex->out_file);
     exit(EXIT_FAILURE);
 }
 
@@ -154,7 +159,7 @@ char *find_path(char *cmd, char **envp)
     return (free_until_null(&split_path), NULL);
 }
 
-char    **populate_args(t_pipex *pipex, t_cmd *cmd, char **args, size_t wc)
+char    **populate_args(t_cmd *cmd, char **args, size_t wc)
 {
     size_t i;
 
@@ -175,7 +180,7 @@ char    **populate_args(t_pipex *pipex, t_cmd *cmd, char **args, size_t wc)
     }
     return (cmd->args);
 }
-t_cmd   *build_command(t_pipex *pipex, char *cmd_str, char **envp)
+t_cmd   *build_command(char *cmd_str, char **envp)
 {
     int wc;
     char **cmd_str_split;
@@ -192,7 +197,7 @@ t_cmd   *build_command(t_pipex *pipex, char *cmd_str, char **envp)
         ret->path = find_path(cmd_str_split[0], envp);
     if (!ret->path)
         return (free(ret), free_until_null(&cmd_str_split), NULL);
-    if (!populate_args(pipex, ret, cmd_str_split, wc))
+    if (!populate_args(ret, cmd_str_split, wc))
         return (free(ret), free_until_null(&cmd_str_split), NULL);
     return (free_until_null(&cmd_str_split), ret);
 }
@@ -209,26 +214,6 @@ void close_fds(t_pipex *pipex)
         if (close(pipex->cmds[i++].fd[WRITE_END]) == -1)
             error_exit(pipex, NULL);
     }
-}
-
-void    open_pipes(t_pipex *pipex)
-{
-    size_t  i;
-
-    i = 0;
-    while (i < pipex->cmd_count)
-        if(pipe(pipex->cmds[i++].fd) == -1)
-            error_exit(pipex, NULL);
-}
-
-void    wait_pids(t_pipex *pipex)
-{
-    size_t  i;
-    
-    i = 0;
-    while (i < pipex->cmd_count)
-        if(waitpid(pipex->cmds[i++].pid, NULL, 0) == -1)
-            error_exit(pipex, NULL);
 }
 
 void    connect(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
@@ -255,6 +240,26 @@ void    connect(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
     }
 }
 
+void    open_pipes(t_pipex *pipex)
+{
+    size_t  i;
+
+    i = 0;
+    while (i < pipex->cmd_count - 1)
+        if(pipe(pipex->cmds[i++].fd) == -1)
+            error_exit(pipex, NULL);
+}
+
+void    wait_pids(t_pipex *pipex)
+{
+    size_t  i;
+    
+    i = 0;
+    while (i < pipex->cmd_count)
+        if(waitpid(pipex->cmds[i++].pid, NULL, 0) == -1)
+            error_exit(pipex, NULL);
+}
+
 void    exec(t_pipex *pipex, t_cmd *cmd, size_t index)
 {
     connect(pipex, cmd, (index == 0), (index == (pipex->cmd_count - 1)));
@@ -276,7 +281,7 @@ void    pipe_exec_them(t_pipex *pipex)
         cmd->pid = fork();
         if(cmd->pid == -1)
             error_exit(pipex, NULL);
-        if (pipex->cmds[i].pid == 0)
+        if (cmd->pid == 0)
             exec(pipex, cmd, i);
         i++;
     }
@@ -284,15 +289,52 @@ void    pipe_exec_them(t_pipex *pipex)
     wait_pids(pipex);
 }
 
+void here_doc_get(int fd[2], const char *limiter)
+{
+    char *line;
+    
+    close(fd[READ_END]);
+    line = get_next_line(0);
+    while (line && ft_strncmp(line, limiter, ft_strlen(limiter) != 0))
+    {
+        ft_putstr_fd(line, fd[WRITE_END]);
+        free(line);
+        line = get_next_line(0);
+    }
+    if (line)
+    free(line);
+    exit(0);
+}
+
+void here_doc(t_pipex *pipex, char *limiter)
+{
+    int     fd[2];
+    pid_t pid;
+    
+    if(pipe(fd) == -1)
+        error_exit(pipex, NULL);
+    pid = fork();
+    if (pid == -1)
+        error_exit(pipex, NULL);
+    if (pid == 0)
+        here_doc_get(fd, limiter);
+    else
+    {
+        close(fd[WRITE_END]);
+        dup2(fd[READ_END], STDIN_FILENO);
+        wait(NULL);
+    }
+}
+
 int    parse_cmds(t_pipex *pipex)
 {
-    int     i;
+    size_t     i;
     t_cmd   *cmd;
     
     i = 0;
-    while (i < pipex->cmd_count)
+    while (i < pipex->cmd_count )
     {
-        cmd = build_command(pipex, pipex->argv[i + 2], pipex->envp);
+        cmd = build_command(pipex->argv[i + 2], pipex->envp);
         if (!cmd)
             error_exit(pipex, "Command parsing failure");
         pipex->cmds[i] = *cmd;
@@ -303,14 +345,28 @@ int    parse_cmds(t_pipex *pipex)
 }
 int main(int argc, char **argv, char **envp)
 {
-    int     i;
     t_pipex pipex;
     ft_memset(&pipex, 0, sizeof(pipex));
     if (argc < 5)
-        return (1);
-    i = 0;
-    pipex.in_file = open(argv[1], O_RDONLY);
-    pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    return (1);
+    if (ft_strncmp(argv[1], "here_doc", 9) != 0)
+    {
+        pipex.here_doc = false;
+        pipex.in_file = open(argv[1], O_RDONLY);
+        if (pipex.in_file == -1)
+            error_exit(&pipex, NULL);
+        pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (pipex.out_file == -1)
+            error_exit(&pipex, NULL);
+    }
+    else
+    {
+        here_doc(&pipex, argv[2]);
+        pipex.here_doc = true;
+        pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (pipex.out_file == -1)
+            error_exit(&pipex, NULL);
+    }
     pipex.cmd_count = argc - 3;
     pipex.cmds = ft_calloc(pipex.cmd_count, sizeof(t_cmd));
     pipex.argv = argv;
