@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   pipex.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
+/*   By: amagno-r <amagno-r@student.42port.com>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 23:13:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/02 03:54:27 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/02 19:51:41 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,7 @@ typedef struct s_pipex
     bool    here_doc;
     char    **argv;
     char    **envp;
+    int     exit_status;
     t_cmd   *cmds;
     size_t  cmd_count;
 } t_pipex;
@@ -76,15 +77,12 @@ void    free_cmds(t_pipex *pipex)
 void    error_exit(t_pipex *pipex, const char *errorstr)
 {
     free_cmds(pipex);
-    if (!errorstr)
-        perror(strerror(errno));
-    else
-        perror(errorstr);
+    perror(errorstr);
     if (pipex->in_file != -1)
         close(pipex->in_file);
     if (pipex->out_file != -1)
         close(pipex->out_file);
-    exit(EXIT_FAILURE);
+    exit(pipex->exit_status);
 }
 
 int count_words(char *str, char sep)
@@ -221,7 +219,7 @@ void    connect(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
     if (first)
     {
         if (dup2(pipex->in_file, STDIN_FILENO) == -1)
-            error_exit(pipex, NULL);
+            error_exit(pipex, pipex->argv[1]);
     }
     else
     {
@@ -253,11 +251,20 @@ void    open_pipes(t_pipex *pipex)
 void    wait_pids(t_pipex *pipex)
 {
     size_t  i;
+    int     status;
     
     i = 0;
     while (i < pipex->cmd_count)
-        if(waitpid(pipex->cmds[i++].pid, NULL, 0) == -1)
-            error_exit(pipex, NULL);
+    {
+        waitpid(pipex->cmds[i].pid, &status, 0);
+        if (i++ == pipex->cmd_count - 1)
+        {
+            if (WIFEXITED(status))
+			    pipex->exit_status = WEXITSTATUS(status);
+		    else
+			    pipex->exit_status = 1;
+        }
+    }
 }
 
 void    exec(t_pipex *pipex, t_cmd *cmd, size_t index)
@@ -265,8 +272,10 @@ void    exec(t_pipex *pipex, t_cmd *cmd, size_t index)
     connect(pipex, cmd, (index == 0), (index == (pipex->cmd_count - 1)));
     close_fds(pipex);
     if (execve(cmd->path, cmd->args, pipex->envp) == -1)
+    {
+        pipex->exit_status = 127;
         error_exit(pipex, NULL);
-    exit(1);
+    }
 }
 void    pipe_exec_them(t_pipex *pipex)
 {
@@ -334,7 +343,7 @@ int    parse_cmds(t_pipex *pipex)
     i = 0;
     while (i < pipex->cmd_count )
     {
-        cmd = build_command(pipex->argv[i + 2], pipex->envp);
+        cmd = build_command(pipex->argv[i + 2 + pipex->here_doc], pipex->envp);
         if (!cmd)
             error_exit(pipex, "Command parsing failure");
         pipex->cmds[i] = *cmd;
@@ -353,11 +362,12 @@ int main(int argc, char **argv, char **envp)
     {
         pipex.here_doc = false;
         pipex.in_file = open(argv[1], O_RDONLY);
-        if (pipex.in_file == -1)
-            error_exit(&pipex, NULL);
         pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (pipex.out_file == -1)
+        {
+            pipex.exit_status = 1;
             error_exit(&pipex, NULL);
+        }
     }
     else
     {
@@ -365,9 +375,12 @@ int main(int argc, char **argv, char **envp)
         pipex.here_doc = true;
         pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
         if (pipex.out_file == -1)
+        {
+            pipex.exit_status = 1;
             error_exit(&pipex, NULL);
+        }
     }
-    pipex.cmd_count = argc - 3;
+    pipex.cmd_count = argc - 3 - pipex.here_doc;
     pipex.cmds = ft_calloc(pipex.cmd_count, sizeof(t_cmd));
     pipex.argv = argv;
     pipex.envp = envp;
