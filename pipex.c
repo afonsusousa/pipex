@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   pipex.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: amagno-r <amagno-r@student.42port.com>     +#+  +:+       +#+        */
+/*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 23:13:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/02 19:51:41 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/02 20:57:44 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -214,22 +214,31 @@ void close_fds(t_pipex *pipex)
     }
 }
 
-void    connect(t_pipex *pipex, t_cmd *cmd, bool first, bool last)
+void    connect_in(t_pipex *pipex, t_cmd *cmd, bool first)
 {
     if (first)
     {
         if (dup2(pipex->in_file, STDIN_FILENO) == -1)
+        {
+            pipex->exit_status = 1;
             error_exit(pipex, pipex->argv[1]);
+        }
     }
     else
     {
         if (dup2((cmd - 1)->fd[READ_END], STDIN_FILENO) == -1)
             error_exit(pipex, NULL);
     }
+}
+void    connect_out(t_pipex *pipex, t_cmd *cmd, bool last)
+{
     if (last)
     {
         if (dup2(pipex->out_file, STDOUT_FILENO) == -1)
+        {
+            pipex->exit_status = 1;
             error_exit(pipex, NULL);
+        }
     }
     else
     {
@@ -257,19 +266,21 @@ void    wait_pids(t_pipex *pipex)
     while (i < pipex->cmd_count)
     {
         waitpid(pipex->cmds[i].pid, &status, 0);
-        if (i++ == pipex->cmd_count - 1)
+        if (i == pipex->cmd_count - 1)
         {
             if (WIFEXITED(status))
 			    pipex->exit_status = WEXITSTATUS(status);
 		    else
 			    pipex->exit_status = 1;
         }
+        i++;
     }
 }
 
 void    exec(t_pipex *pipex, t_cmd *cmd, size_t index)
 {
-    connect(pipex, cmd, (index == 0), (index == (pipex->cmd_count - 1)));
+    connect_in(pipex, cmd, (index == 0));
+    connect_out(pipex, cmd, (index == pipex->cmd_count - 1));
     close_fds(pipex);
     if (execve(cmd->path, cmd->args, pipex->envp) == -1)
     {
@@ -345,7 +356,11 @@ int    parse_cmds(t_pipex *pipex)
     {
         cmd = build_command(pipex->argv[i + 2 + pipex->here_doc], pipex->envp);
         if (!cmd)
-            error_exit(pipex, "Command parsing failure");
+        {
+            if (i == pipex->cmd_count - 1)
+                pipex->exit_status = 127;
+            error_exit(pipex, pipex->argv[i + 2 + pipex->here_doc]);
+        }
         pipex->cmds[i] = *cmd;
         free(cmd);
         i++;
@@ -362,23 +377,13 @@ int main(int argc, char **argv, char **envp)
     {
         pipex.here_doc = false;
         pipex.in_file = open(argv[1], O_RDONLY);
-        pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (pipex.out_file == -1)
-        {
-            pipex.exit_status = 1;
-            error_exit(&pipex, NULL);
-        }
+{}        pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
     }
     else
     {
         here_doc(&pipex, argv[2]);
         pipex.here_doc = true;
         pipex.out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
-        if (pipex.out_file == -1)
-        {
-            pipex.exit_status = 1;
-            error_exit(&pipex, NULL);
-        }
     }
     pipex.cmd_count = argc - 3 - pipex.here_doc;
     pipex.cmds = ft_calloc(pipex.cmd_count, sizeof(t_cmd));
@@ -389,5 +394,5 @@ int main(int argc, char **argv, char **envp)
     free_cmds(&pipex);
     close(pipex.in_file);
     close(pipex.out_file);
-    return (0);
+    return (pipex.exit_status);
 }
