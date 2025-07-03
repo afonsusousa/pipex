@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:22:33 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 21:01:27 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 21:39:05 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,12 @@ void	init_pipex(t_pipex *pipex, int argc, char **argv, char **envp)
 {
 	if (!ft_strncmp(argv[1], "here_doc", 9))
 	{
+		if (argc < 6)
+		{
+			write(2, "Too few arguments...\n", 22);
+			write(2, "Usage: /pipex here_doc LIMITER cmd cmd1 file\n", 46);
+			exit(1);
+		}
 		here_doc(pipex, argv[2]);
 		pipex->here_doc = true;
 		pipex->out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_APPEND,

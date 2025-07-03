@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:19:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 21:01:18 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 21:36:35 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,11 @@ int	main(int argc, char **argv, char **envp)
 	t_pipex	pipex;
 
 	if (argc < 5)
+	{
+		write(2, "Too few arguments...\n", 22);
+		write(2, "Usage: /pipex infile cmd cmd1 outfile\n", 39);
 		return (1);
+	}
 	ft_memset(&pipex, 0, sizeof(pipex));
 	init_pipex(&pipex, argc, argv, envp);
 	parse_cmds(&pipex);
