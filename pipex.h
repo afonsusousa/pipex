@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 18:23:32 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 19:58:19 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 20:49:09 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdbool.h>
-#include "libft/libft.h" 
+#include "libft.h" 
 
 
 # define READ_END 0
@@ -50,6 +50,9 @@ typedef struct s_pipex
 
 char    *get_next_line(int fd);
 
+//  INIT
+void	init_pipex(t_pipex *pipex, int argc, char **argv, char **envp);
+
 //  STRS
 int count_words(char *str, char sep);
 char    *strjoin_three(char *s1, char *s2, char *s3);
@@ -71,10 +74,11 @@ void    wait_pids(t_pipex *pipex);
 void    exec(t_pipex *pipex, t_cmd *cmd, size_t index);
 void    pipe_exec_them(t_pipex *pipex);
 
+# ifdef BONUS
 // HERE_DOC
 void here_doc_get(int fd[2], const char *limiter);
 void here_doc(t_pipex *pipex, char *limiter);
-
+# endif
 //  CLEANUP
 void    error_exit(t_pipex *pipex, const char *errorstr);
 #endif

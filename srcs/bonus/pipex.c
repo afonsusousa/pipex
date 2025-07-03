@@ -36,8 +36,8 @@ void	connect_out(t_pipex *pipex, t_cmd *cmd, bool last)
 		if (dup2(pipex->out_file, STDOUT_FILENO) == -1)
 		{
 			pipex->exit_status = 1;
-			error_exit(pipex,
-				pipex->argv[pipex->cmd_count + 2 + pipex->here_doc]);
+			error_exit(pipex, pipex->argv[pipex->cmd_count + 2
+				+ pipex->here_doc]);
 		}
 	}
 	else

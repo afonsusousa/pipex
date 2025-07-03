@@ -6,7 +6,7 @@
 #    By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/01 04:30:00 by amagno-r          #+#    #+#              #
-#    Updated: 2025/07/03 19:57:17 by amagno-r         ###   ########.fr        #
+#    Updated: 2025/07/03 20:58:38 by amagno-r         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,24 +16,33 @@ NAME = pipex
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -g
-INCLUDES = -I. -I./libft
+INCLUDES = -I. -I./lib/libft
 
 # Source files
-SRCS =	srcs/main.c \
-		srcs/pipex.c \
-		srcs/pipex_utils.c \
-		srcs/cmds.c \
-		srcs/here_doc.c \
-		srcs/frees.c \
-		srcs/str_utils.c \
-		get_next_line/get_next_line.c \
-		get_next_line/get_next_line_utils.c
+SRCS =	srcs/mandatory/main.c \
+		srcs/mandatory/pipex.c \
+		srcs/mandatory/pipex_utils.c \
+		srcs/mandatory/cmds.c \
+		srcs/mandatory/frees.c \
+		srcs/mandatory/str_utils.c \
+		lib/get_next_line/get_next_line.c \
+		lib/get_next_line/get_next_line_utils.c
 
+BONUS_SRCS = srcs/bonus/main.c \
+			srcs/bonus/pipex.c \
+			srcs/bonus/pipex_utils.c \
+			srcs/bonus/cmds.c \
+			srcs/bonus/here_doc.c \
+			srcs/bonus/frees.c \
+			srcs/bonus/str_utils.c \
+			lib/get_next_line/get_next_line.c \
+			lib/get_next_line/get_next_line_utils.c
 # Object files
 OBJS = $(SRCS:.c=.o)
+BONUS_OBJS = $(BONUS_SRCS:.c=.o)
 
 # Libft
-LIBFT_DIR = ./libft
+LIBFT_DIR = ./lib/libft
 LIBFT = $(LIBFT_DIR)/libft.a
 
 # Colors for output
@@ -46,14 +55,15 @@ NC = \033[0m # No Color
 all: $(LIBFT) $(NAME)
 
 $(NAME): $(OBJS) $(LIBFT)
-	@echo "$(YELLOW)Linking $(NAME)...$(NC)"
 	@$(CC) $(CFLAGS) $(OBJS) $(LIBFT) -o $(NAME)
-	@echo "$(GREEN)✓ $(NAME) created successfully!$(NC)"
 
+bonus: CFLAGS += -DBONUS
+bonus: $(BONUS_OBJS) $(LIBFT)
+	@$(CC) $(CFLAGS) $(BONUS_OBJS) $(LIBFT) -o $(NAME)
+	
 $(LIBFT):
 	@echo "$(YELLOW)Building libft...$(NC)"
 	@make -C $(LIBFT_DIR) --no-print-directory
-	@echo "$(GREEN)✓ libft built successfully!$(NC)"
 
 %.o: %.c
 	@echo "$(YELLOW)Compiling $<...$(NC)"
@@ -61,7 +71,7 @@ $(LIBFT):
 
 clean:
 	@echo "$(RED)Cleaning object files...$(NC)"
-	@rm -f $(OBJS)
+	@rm -f $(OBJS) $(BONUS_OBJS)
 	@make -C $(LIBFT_DIR) clean --no-print-directory
 	@echo "$(GREEN)✓ Object files cleaned!$(NC)"
 

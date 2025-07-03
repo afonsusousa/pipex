@@ -6,11 +6,32 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:22:33 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 20:10:06 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 21:01:27 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
+
+void	init_pipex(t_pipex *pipex, int argc, char **argv, char **envp)
+{
+	if (!ft_strncmp(argv[1], "here_doc", 9))
+	{
+		here_doc(pipex, argv[2]);
+		pipex->here_doc = true;
+		pipex->out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_APPEND,
+				0644);
+	}
+	else
+	{
+		pipex->in_file = open(argv[1], O_RDONLY);
+		pipex->out_file = open(argv[argc - 1], O_WRONLY | O_CREAT | O_TRUNC,
+				0644);
+	}
+	pipex->cmd_count = argc - 3 - pipex->here_doc;
+	pipex->cmds = ft_calloc(pipex->cmd_count, sizeof(t_cmd));
+	pipex->argv = argv;
+	pipex->envp = envp;
+}
 
 void	error_exit(t_pipex *pipex, const char *errorstr)
 {

@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:18:32 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 20:21:09 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 20:47:35 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@ int	parse_cmds(t_pipex *pipex)
 	i = 0;
 	while (i < pipex->cmd_count)
 	{
-		cmd = build_command(pipex->argv[i + 2 + pipex->here_doc], pipex->envp);
+		cmd = build_command(pipex->argv[i + 2], pipex->envp);
 		if (!cmd)
 			error_exit(pipex, NULL);
 		pipex->cmds[i] = *cmd;
@@ -38,7 +38,7 @@ char	*find_path(char *cmd, char **envp)
 
 	i = 0;
 	while (*envp && (ft_strncmp("PATH=", *envp, 5)))
-			envp++;
+		envp++;
 	if (!*envp)
 		return (NULL);
 	split_path = ft_split(*envp + 5, ':');
