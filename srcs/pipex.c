@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:19:08 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 19:47:47 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 20:09:52 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@ void	connect_in(t_pipex *pipex, t_cmd *cmd, bool first)
 			error_exit(pipex, NULL);
 	}
 }
+
 void	connect_out(t_pipex *pipex, t_cmd *cmd, bool last)
 {
 	if (last)
@@ -35,7 +36,8 @@ void	connect_out(t_pipex *pipex, t_cmd *cmd, bool last)
 		if (dup2(pipex->out_file, STDOUT_FILENO) == -1)
 		{
 			pipex->exit_status = 1;
-			error_exit(pipex, pipex->argv[pipex->cmd_count + 2 + pipex->here_doc]);
+			error_exit(pipex,
+				pipex->argv[pipex->cmd_count + 2 + pipex->here_doc]);
 		}
 	}
 	else
@@ -66,6 +68,7 @@ void	exec(t_pipex *pipex, t_cmd *cmd, size_t index)
 		error_exit(pipex, NULL);
 	}
 }
+
 void	pipe_exec_them(t_pipex *pipex)
 {
 	size_t	i;

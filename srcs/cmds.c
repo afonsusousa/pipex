@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:18:32 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 19:54:28 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 20:08:35 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@ int	parse_cmds(t_pipex *pipex)
 	}
 	return (1);
 }
+
 char	*find_path(char *cmd, char **envp)
 {
 	size_t	i;
@@ -37,11 +38,8 @@ char	*find_path(char *cmd, char **envp)
 
 	i = 0;
 	while (*envp)
-	{
-		if (!ft_strncmp("PATH=", *envp, 5))
+		if (!ft_strncmp("PATH=", *envp++, 5))
 			break ;
-		envp++;
-	}
 	if (!*envp)
 		return (NULL);
 	split_path = ft_split(*envp + 5, ':');
@@ -80,6 +78,7 @@ char	**populate_args(t_cmd *cmd, char **args, size_t wc)
 	}
 	return (cmd->args);
 }
+
 t_cmd	*build_command(char *cmd_str, char **envp)
 {
 	int		wc;

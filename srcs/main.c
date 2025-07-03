@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:19:12 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 19:55:32 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 20:08:44 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 int	main(int argc, char **argv, char **envp)
 {
 	t_pipex pipex;
+	
 	ft_memset(&pipex, 0, sizeof(pipex));
 	if (argc < 5)
 		return (1);
