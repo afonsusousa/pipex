@@ -6,7 +6,7 @@
 #    By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/01 04:30:00 by amagno-r          #+#    #+#              #
-#    Updated: 2025/07/01 23:04:01 by amagno-r         ###   ########.fr        #
+#    Updated: 2025/07/03 19:57:17 by amagno-r         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,12 +16,18 @@ NAME = pipex
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -g
-INCLUDES = -I. -I./libft 
+INCLUDES = -I. -I./libft
 
 # Source files
-SRCS = pipex.c \
-       get_next_line/get_next_line.c \
-       get_next_line/get_next_line_utils.c
+SRCS =	srcs/main.c \
+		srcs/pipex.c \
+		srcs/pipex_utils.c \
+		srcs/cmds.c \
+		srcs/here_doc.c \
+		srcs/frees.c \
+		srcs/str_utils.c \
+		get_next_line/get_next_line.c \
+		get_next_line/get_next_line_utils.c
 
 # Object files
 OBJS = $(SRCS:.c=.o)
@@ -66,32 +72,6 @@ fclean: clean
 	@echo "$(GREEN)✓ Everything cleaned!$(NC)"
 
 re: fclean all
-
-# Test targets
-test: $(NAME)
-	@echo "$(YELLOW)Running basic test...$(NC)"
-	@echo "This is a test file" > test_input.txt
-	@echo "line 2" >> test_input.txt
-	@echo "line 3" >> test_input.txt
-	@./$(NAME) test_input.txt "cat" "wc -l" test_output.txt
-	@echo "$(GREEN)Test completed. Check test_output.txt$(NC)"
-
-test_complex: $(NAME)
-	@echo "$(YELLOW)Running complex pipeline test...$(NC)"
-	@ls -la > test_input.txt
-	@./$(NAME) test_input.txt "grep pipex" "wc -l" test_output.txt
-	@echo "$(GREEN)Complex test completed. Check test_output.txt$(NC)"
-
-clean_test:
-	@rm -f test_input.txt test_output.txt
-
-# Valgrind memory check
-valgrind: $(NAME)
-	@echo "$(YELLOW)Running valgrind memory check...$(NC)"
-	@echo "Test content for valgrind" > test_input.txt
-	@valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-		./$(NAME) test_input.txt "cat" "wc -l" test_output.txt
-	@rm -f test_input.txt test_output.txt
 
 # Debug build
 debug: CFLAGS += -DDEBUG -fsanitize=address

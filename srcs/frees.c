@@ -1,30 +1,41 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_printf_utils_putchar.c                          :+:      :+:    :+:   */
+/*   frees.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/08 19:54:07 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/05/13 20:06:37 by amagno-r         ###   ########.fr       */
+/*   Created: 2025/07/03 19:18:58 by amagno-r          #+#    #+#             */
+/*   Updated: 2025/07/03 19:20:46 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ft_printf.h"
+#include "pipex.h"
 
-int	ft_putchar(char c)
+void	free_until_null(char ***str_v)
 {
-	return (write(1, &c, 1));
+	size_t	i;
+
+	i = 0;
+	if (!*str_v)
+		return ;
+	while ((*str_v)[i])
+		free((*str_v)[i++]);
+	free(*str_v);
+	*str_v = NULL;
 }
 
-int	ft_putchar_wrapper(char c, t_flags *flags)
+void	free_cmds(t_pipex *pipex)
 {
-	int	count;
+	size_t	i;
 
-	count = 0;
-	if (flags->left)
-		count += ft_putchar(c) + ft_pad(--flags->width, ' ');
-	else
-		count += ft_pad(--flags->width, ' ') + ft_putchar(c);
-	return (count);
+	i = 0;
+	while (i < pipex->cmd_count)
+	{
+		free_until_null(&pipex->cmds[i].args);
+		if (pipex->cmds[i].path)
+			free(pipex->cmds[i].path);
+		i++;
+	}
+	free(pipex->cmds);
 }
