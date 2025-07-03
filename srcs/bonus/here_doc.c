@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:19:04 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 20:08:17 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 21:43:12 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@ void	here_doc_get(int fd[2], const char *limiter)
 
 	close(fd[READ_END]);
 	line = get_next_line(0);
-	while (line && ft_strncmp(line, limiter, ft_strlen(limiter) != 0))
+	while (line && ft_strncmp(line, limiter, ft_strlen(limiter)) != 0)
 	{
 		ft_putstr_fd(line, fd[WRITE_END]);
 		free(line);
