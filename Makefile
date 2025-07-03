@@ -6,7 +6,7 @@
 #    By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/01 04:30:00 by amagno-r          #+#    #+#              #
-#    Updated: 2025/07/03 20:58:38 by amagno-r         ###   ########.fr        #
+#    Updated: 2025/07/03 22:14:27 by amagno-r         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -45,12 +45,6 @@ BONUS_OBJS = $(BONUS_SRCS:.c=.o)
 LIBFT_DIR = ./lib/libft
 LIBFT = $(LIBFT_DIR)/libft.a
 
-# Colors for output
-GREEN = \033[0;32m
-RED = \033[0;31m
-YELLOW = \033[0;33m
-NC = \033[0m # No Color
-
 # Rules
 all: $(LIBFT) $(NAME)
 
@@ -62,43 +56,29 @@ bonus: $(BONUS_OBJS) $(LIBFT)
 	@$(CC) $(CFLAGS) $(BONUS_OBJS) $(LIBFT) -o $(NAME)
 	
 $(LIBFT):
-	@echo "$(YELLOW)Building libft...$(NC)"
+	@echo "Building libft..."
 	@make -C $(LIBFT_DIR) --no-print-directory
 
 %.o: %.c
-	@echo "$(YELLOW)Compiling $<...$(NC)"
+	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
-	@echo "$(RED)Cleaning object files...$(NC)"
+	@echo "Cleaning object files..."
 	@rm -f $(OBJS) $(BONUS_OBJS)
 	@make -C $(LIBFT_DIR) clean --no-print-directory
-	@echo "$(GREEN)✓ Object files cleaned!$(NC)"
+	@echo "✓ Object files cleaned!"
 
 fclean: clean
-	@echo "$(RED)Cleaning executable and libraries...$(NC)"
+	@echo "Cleaning executable and libraries..."
 	@rm -f $(NAME)
 	@make -C $(LIBFT_DIR) fclean --no-print-directory
-	@echo "$(GREEN)✓ Everything cleaned!$(NC)"
+	@echo "✓ Everything cleaned!"
 
 re: fclean all
 
 # Debug build
 debug: CFLAGS += -DDEBUG -fsanitize=address
 debug: re
-
-# Help target
-help:
-	@echo "$(GREEN)Available targets:$(NC)"
-	@echo "  all          - Build the project"
-	@echo "  clean        - Remove object files"
-	@echo "  fclean       - Remove object files and executable"
-	@echo "  re           - Rebuild the project"
-	@echo "  test         - Run basic test"
-	@echo "  test_complex - Run complex pipeline test"
-	@echo "  clean_test   - Clean test files"
-	@echo "  valgrind     - Run memory leak check"
-	@echo "  debug        - Build with debug flags and AddressSanitizer"
-	@echo "  help         - Show this help message"
 
 .PHONY: all clean fclean re test test_complex clean_test valgrind debug help
