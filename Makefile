@@ -6,7 +6,7 @@
 #    By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/01 04:30:00 by amagno-r          #+#    #+#              #
-#    Updated: 2025/07/03 22:14:27 by amagno-r         ###   ########.fr        #
+#    Updated: 2025/07/03 22:17:40 by amagno-r         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -28,13 +28,13 @@ SRCS =	srcs/mandatory/main.c \
 		lib/get_next_line/get_next_line.c \
 		lib/get_next_line/get_next_line_utils.c
 
-BONUS_SRCS = srcs/bonus/main.c \
-			srcs/bonus/pipex.c \
-			srcs/bonus/pipex_utils.c \
-			srcs/bonus/cmds.c \
-			srcs/bonus/here_doc.c \
-			srcs/bonus/frees.c \
-			srcs/bonus/str_utils.c \
+BONUS_SRCS = srcs/bonus/main_bonus.c \
+			srcs/bonus/pipex_bonus.c \
+			srcs/bonus/pipex_utils_bonus.c \
+			srcs/bonus/cmds_bonus.c \
+			srcs/bonus/here_doc_bonus.c \
+			srcs/bonus/frees_bonus.c \
+			srcs/bonus/str_utils_bonus.c \
 			lib/get_next_line/get_next_line.c \
 			lib/get_next_line/get_next_line_utils.c
 # Object files
