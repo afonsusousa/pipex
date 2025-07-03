@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:18:32 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 20:08:35 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/03 20:21:09 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,9 +37,8 @@ char	*find_path(char *cmd, char **envp)
 	char	*try;
 
 	i = 0;
-	while (*envp)
-		if (!ft_strncmp("PATH=", *envp++, 5))
-			break ;
+	while (*envp && (ft_strncmp("PATH=", *envp, 5)))
+			envp++;
 	if (!*envp)
 		return (NULL);
 	split_path = ft_split(*envp + 5, ':');
