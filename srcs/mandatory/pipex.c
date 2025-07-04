@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:19:08 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/03 20:49:32 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/04 23:01:32 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@ void	connect_in(t_pipex *pipex, t_cmd *cmd, bool first)
 		if (dup2(pipex->in_file, STDIN_FILENO) == -1)
 		{
 			pipex->exit_status = 1;
+			close_fds(pipex);
 			error_exit(pipex, pipex->argv[1]);
 		}
 	}
@@ -36,6 +37,7 @@ void	connect_out(t_pipex *pipex, t_cmd *cmd, bool last)
 		if (dup2(pipex->out_file, STDOUT_FILENO) == -1)
 		{
 			pipex->exit_status = 1;
+			close_fds(pipex);
 			error_exit(pipex, pipex->argv[pipex->cmd_count + 2]);
 		}
 	}
