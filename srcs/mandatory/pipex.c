@@ -6,7 +6,7 @@
 /*   By: amagno-r <amagno-r@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/03 19:19:08 by amagno-r          #+#    #+#             */
-/*   Updated: 2025/07/04 23:01:32 by amagno-r         ###   ########.fr       */
+/*   Updated: 2025/07/04 23:14:44 by amagno-r         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,11 +51,24 @@ void	connect_out(t_pipex *pipex, t_cmd *cmd, bool last)
 void	open_pipes(t_pipex *pipex)
 {
 	size_t	i;
+	size_t 	j;
 
 	i = 0;
 	while (i < pipex->cmd_count - 1)
-		if (pipe(pipex->cmds[i++].fd) == -1)
+	{
+		if (pipe(pipex->cmds[i].fd) == -1)
+		{
+			j = 0;
+			while (j < i)
+			{
+				close(pipex->cmds[j].fd[0]);
+				close(pipex->cmds[j].fd[1]);
+				j++;
+			}
 			error_exit(pipex, NULL);
+		}
+		i++;
+	}
 }
 
 void	exec(t_pipex *pipex, t_cmd *cmd, size_t index)
