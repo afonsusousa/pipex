@@ -51,7 +51,7 @@ void	connect_out(t_pipex *pipex, t_cmd *cmd, bool last)
 void	open_pipes(t_pipex *pipex)
 {
 	size_t	i;
-	size_t 	j;
+	size_t	j;
 
 	i = 0;
 	while (i < pipex->cmd_count - 1)
